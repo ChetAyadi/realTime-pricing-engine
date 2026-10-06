@@ -37,8 +37,8 @@ A high-performance, low-latency pricing engine designed to ingest streaming mark
 
 ## 🛠️ Tech Stack
 
-* **Language:** Python / Node.js / Java *(Adjust based on your actual tech stack)*
-* **Concurrency / Messaging:** WebSockets / Redis / Kafka *(Update as applicable)*
+* **Language:** Python
+* **Concurrency / Messaging:** WebSockets / Redis / Kafka
 * **Testing:** PyTest / Jest / JUnit
 
 ---
@@ -48,7 +48,7 @@ A high-performance, low-latency pricing engine designed to ingest streaming mark
 ### Prerequisites
 
 Ensure you have the following installed on your machine:
-* Language Runtime (Python 3.9+, Node.js 18+, Java 17+, etc.)
+* Language Runtime (Python 3.9+)
 * Redis or your chosen message broker (if running stateful components)
 
 ### Installation
@@ -63,10 +63,7 @@ Ensure you have the following installed on your machine:
    ```bash
    # Example for Python
    pip install -r requirements.txt
-   
-   # Or for Node.js
-   npm install
-   ```
+
 
 3. **Configure environment variables:**
    Create a `.env` file in the root directory based on the provided example:
