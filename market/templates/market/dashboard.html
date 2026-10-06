@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Pricing Engine Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0e14;
+            color: #e2e8f0;
+        }
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .flash-up {
+            animation: flashGreen 0.6s ease-out;
+        }
+        .flash-down {
+            animation: flashRed 0.6s ease-out;
+        }
+        @keyframes flashGreen {
+            0% { background-color: rgba(34, 197, 94, 0.4); color: #4ade80; }
+            100% { background-color: transparent; }
+        }
+        @keyframes flashRed {
+            0% { background-color: rgba(239, 68, 68, 0.4); color: #f87171; }
+            100% { background-color: transparent; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+    <!-- Top Navigation Header -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="h-9 w-9 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/30">
+                    FX
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-white tracking-wide">Real-Time Pricing Engine</h1>
+                    <p class="text-xs text-slate-400">LiveFXHub Engine • 24h Rolling Analytics</p>
+                </div>
+            </div>
+
+            <!-- Real-time Status Indicator -->
+            <div class="flex items-center space-x-4">
+                <div class="flex items-center px-3 py-1.5 rounded-full border border-slate-700 bg-slate-800/80 text-xs font-medium">
+                    <span id="status-dot" class="h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse mr-2"></span>
+                    <span id="status-text" class="text-slate-300">Initializing...</span>
+                </div>
+                <div class="hidden sm:flex text-xs text-slate-400 mono bg-slate-800 px-3 py-1.5 rounded-md border border-slate-700">
+                    Ticks Received: <span id="ticks-counter" class="text-indigo-400 ml-1 font-bold">0</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-6">
+
+        <!-- Error / Warning Banner -->
+        <div id="alert-banner" class="hidden p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-200 flex items-start space-x-3">
+            <svg class="h-6 w-6 text-amber-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+            <div>
+                <h4 id="alert-title" class="font-semibold text-sm">Connection Warning</h4>
+                <p id="alert-msg" class="text-xs text-amber-300/90 mt-0.5">Checking LiveFXHub credentials in .env...</p>
+            </div>
+        </div>
+
+        <!-- Top Analytics Grid Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-400">Total Tracked Symbols</p>
+                    <p id="card-total-symbols" class="text-2xl font-bold text-white mt-1 mono">{{ symbols_count }}</p>
+                </div>
+                <div class="p-2.5 rounded-lg bg-indigo-500/10 text-indigo-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                </div>
+            </div>
+
+            <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-400">Top 24h Gainer</p>
+                    <p id="card-top-gainer" class="text-lg font-bold text-emerald-400 mt-1 mono">--</p>
+                </div>
+                <div class="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7 7 7M5 19l7-7 7 7"/></svg>
+                </div>
+            </div>
+
+            <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-400">Top 24h Drop</p>
+                    <p id="card-top-drop" class="text-lg font-bold text-rose-400 mt-1 mono">--</p>
+                </div>
+                <div class="p-2.5 rounded-lg bg-rose-500/10 text-rose-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7-7-7"/></svg>
+                </div>
+            </div>
+
+            <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-400">Engine Status</p>
+                    <p id="card-engine-status" class="text-sm font-bold text-amber-400 mt-1 uppercase tracking-wider">INITIALIZING</p>
+                </div>
+                <div class="p-2.5 rounded-lg bg-slate-800 text-slate-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls: Search & Category Filter -->
+        <div class="flex flex-col sm:flex-row gap-4 items-center justify-between bg-slate-900 p-4 rounded-xl border border-slate-800">
+            <!-- Search Bar -->
+            <div class="relative w-full sm:w-80">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                </div>
+                <input type="text" id="search-input" placeholder="Search symbol (e.g. AUDUSD, BTC)..." 
+                    class="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+            </div>
+
+            <!-- Filter Buttons -->
+            <div class="flex items-center space-x-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+                <button onclick="setFilter('ALL')" id="filter-ALL" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-600 text-white shadow">ALL</button>
+                <button onclick="setFilter('FOREX')" id="filter-FOREX" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700">FOREX</button>
+                <button onclick="setFilter('CRYPTO')" id="filter-CRYPTO" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700">CRYPTO</button>
+                <button onclick="setFilter('METALS')" id="filter-METALS" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700">COMMODITIES</button>
+            </div>
+        </div>
+
+        <!-- Real-Time Prices Table -->
+        <div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden shadow-xl">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-slate-300">
+                    <thead class="bg-slate-950/70 text-xs uppercase font-semibold text-slate-400 border-b border-slate-800">
+                        <tr>
+                            <th class="px-6 py-3.5">Symbol</th>
+                            <th class="px-6 py-3.5 text-right">Buy Price</th>
+                            <th class="px-6 py-3.5 text-right">Sell Price</th>
+                            <th class="px-6 py-3.5 text-right">24h High (Computed)</th>
+                            <th class="px-6 py-3.5 text-right">24h Low (Computed)</th>
+                            <th class="px-6 py-3.5 text-right">24h Change</th>
+                            <th class="px-6 py-3.5 text-center">Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody id="prices-table-body" class="divide-y divide-slate-800/60 font-medium">
+                        <tr id="loading-row">
+                            <td colspan="7" class="px-6 py-12 text-center text-slate-500">
+                                <div class="flex flex-col items-center justify-center space-y-3">
+                                    <svg class="animate-spin h-7 w-7 text-indigo-500" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span>Connecting to Channels WebSocket and loading live market prices...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800 py-4 bg-slate-950/50 text-xs text-center text-slate-500">
+        <p>Real-Time Pricing Engine • Django 5 + Channels • Calculated 24h Rolling Window</p>
+    </footer>
+
+    <!-- Pure JS WebSocket Client -->
+    <script>
+    const symbolState = new Map();
+    let totalTicksCount = 0;
+    let activeFilter = 'ALL';
+    let searchQuery = '';
+
+    const cryptoSymbols = ["BTCUSD", "ETHUSD", "BNBUSD", "SOLUSD", "XRPUSD", "ADAUSD", "DOGUSD", "DOTUSD", "LTCUSD", "BCHUSD", "XLMUSD", "TRXUSD", "UNIUSD", "FILUSD", "AVXUSD"];
+    const metalSymbols = ["XAUUSD", "XAGUSD"];
+
+    function getSymbolCategory(sym) {
+        if (cryptoSymbols.includes(sym)) return 'CRYPTO';
+        if (metalSymbols.includes(sym)) return 'METALS';
+        return 'FOREX';
+    }
+
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${window.location.host}/ws/market/`;
+    console.log("Connecting to Channels WS at:", wsUrl);
+
+    let ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+        console.log("Connected to Django Channels WebSocket.");
+        updateStatusBadge("CONNECTED", "bg-emerald-500", "Connected & Streaming");
+        document.getElementById('card-engine-status').innerText = "CONNECTED";
+        document.getElementById('card-engine-status').className = "text-sm font-bold text-emerald-400 uppercase tracking-wider";
+    };
+
+    ws.onmessage = (event) => {
+        try {
+            const msg = JSON.parse(event.data);
+            
+            if (msg.type === "connection_status") {
+                handleEngineStatus(msg);
+            } else if (msg.type === "market_snapshot") {
+                if (Array.isArray(msg.data)) {
+                    msg.data.forEach(tick => updateOrAddSymbolRow(tick, false));
+                    updateAnalyticsCards();
+                }
+            } else if (msg.type === "market_tick" && msg.data) {
+                totalTicksCount++;
+                document.getElementById('ticks-counter').innerText = totalTicksCount.toLocaleString();
+                updateOrAddSymbolRow(msg.data, true);
+                updateAnalyticsCards();
+            }
+        } catch (err) {
+            console.error("Error processing incoming message:", err);
+        }
+    };
+
+    ws.onclose = () => {
+        console.warn("Channels WebSocket disconnected. Retrying in 3s...");
+        updateStatusBadge("DISCONNECTED", "bg-slate-500", "Reconnecting...");
+        setTimeout(() => {
+            ws = new WebSocket(wsUrl);
+        }, 3000);
+    };
+
+    ws.onerror = (err) => {
+        console.error("WebSocket Error:", err);
+    };
+
+    function handleEngineStatus(data) {
+        const status = data.status;
+        const err = data.last_error;
+
+        const banner = document.getElementById('alert-banner');
+        const alertTitle = document.getElementById('alert-title');
+        const alertMsg = document.getElementById('alert-msg');
+
+        if (status === "CREDENTIALS_MISSING") {
+            banner.classList.remove('hidden');
+            alertTitle.innerText = "API Credentials Missing in .env";
+            alertMsg.innerText = "Please set LIVEFX_API_KEY and LIVEFX_SECRET_KEY in your .env file to enable live market streaming.";
+            updateStatusBadge("NO_CREDS", "bg-amber-500", "Credentials Missing");
+        } else if (status === "AUTH_FAILED") {
+            banner.classList.remove('hidden');
+            alertTitle.innerText = "External LiveFXHub Auth Failed";
+            alertMsg.innerText = err || "Authentication failed with external market feed.";
+            updateStatusBadge("AUTH_FAIL", "bg-rose-500", "Auth Failed");
+        } else if (status === "CONNECTED") {
+            banner.classList.add('hidden');
+            updateStatusBadge("CONNECTED", "bg-emerald-500", "Live Stream Connected");
+        } else {
+            updateStatusBadge(status, "bg-amber-500", status);
+        }
+    }
+
+    function updateStatusBadge(code, colorClass, labelText) {
+        const dot = document.getElementById('status-dot');
+        const text = document.getElementById('status-text');
+        dot.className = `h-2.5 w-2.5 rounded-full ${colorClass} animate-pulse mr-2`;
+        text.innerText = labelText;
+    }
+
+    function updateOrAddSymbolRow(tick, animate = true) {
+        const tbody = document.getElementById('prices-table-body');
+        const loadingRow = document.getElementById('loading-row');
+        if (loadingRow) loadingRow.remove();
+
+        const sym = tick.symbol;
+        if (!sym) return;
+
+        // Ensure safe float parsing
+        const buyVal = parseFloat(tick.buy ?? tick.ask ?? 0);
+        const sellVal = parseFloat(tick.sell ?? tick.bid ?? 0);
+        const highVal = parseFloat(tick.high_24h ?? buyVal);
+        const lowVal = parseFloat(tick.low_24h ?? buyVal);
+        const changeVal = parseFloat(tick.change_24h ?? 0);
+
+        const safeTick = {
+            ...tick,
+            buy: buyVal,
+            sell: sellVal,
+            high_24h: highVal,
+            low_24h: lowVal,
+            change_24h: changeVal
+        };
+
+        const prev = symbolState.get(sym);
+        symbolState.set(sym, safeTick);
+
+        let tr = document.getElementById(`row-${sym}`);
+        const isNew = !tr;
+
+        if (isNew) {
+            tr = document.createElement('tr');
+            tr.id = `row-${sym}`;
+            tr.className = "hover:bg-slate-800/40 transition-colors";
+            tbody.appendChild(tr);
+        }
+
+        let buyFlash = '';
+        let sellFlash = '';
+        if (prev && animate) {
+            if (safeTick.buy > prev.buy) buyFlash = 'flash-up';
+            else if (safeTick.buy < prev.buy) buyFlash = 'flash-down';
+
+            if (safeTick.sell > prev.sell) sellFlash = 'flash-up';
+            else if (safeTick.sell < prev.sell) sellFlash = 'flash-down';
+        }
+
+        const changeColor = changeVal >= 0 ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-rose-400 bg-rose-500/10 border-rose-500/20';
+        const changeSign = changeVal >= 0 ? '+' : '';
+        const dateStr = safeTick.timestamp ? new Date(safeTick.timestamp).toLocaleTimeString() : '--';
+
+        tr.innerHTML = `
+            <td class="px-6 py-3.5 flex items-center space-x-3">
+                <span class="font-bold text-white mono">${sym}</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-semibold border border-slate-700">${getSymbolCategory(sym)}</span>
+            </td>
+            <td class="px-6 py-3.5 text-right mono ${buyFlash}">${safeTick.buy.toFixed(5)}</td>
+            <td class="px-6 py-3.5 text-right mono ${sellFlash}">${safeTick.sell.toFixed(5)}</td>
+            <td class="px-6 py-3.5 text-right mono text-slate-300">${safeTick.high_24h.toFixed(5)}</td>
+            <td class="px-6 py-3.5 text-right mono text-slate-300">${safeTick.low_24h.toFixed(5)}</td>
+            <td class="px-6 py-3.5 text-right">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold mono border ${changeColor}">
+                    ${changeSign}${changeVal.toFixed(3)}%
+                </span>
+            </td>
+            <td class="px-6 py-3.5 text-center text-xs text-slate-400 mono">${dateStr}</td>
+        `;
+
+        applyRowFilters(tr, sym);
+    }
+
+    function applyRowFilters(tr, sym) {
+        const cat = getSymbolCategory(sym);
+        const matchesFilter = (activeFilter === 'ALL') || (activeFilter === cat);
+        const matchesSearch = sym.toLowerCase().includes(searchQuery.toLowerCase());
+
+        if (matchesFilter && matchesSearch) {
+            tr.classList.remove('hidden');
+        } else {
+            tr.classList.add('hidden');
+        }
+    }
+
+    function updateAnalyticsCards() {
+        let topGainer = null;
+        let topDrop = null;
+
+        symbolState.forEach(tick => {
+            if (!topGainer || tick.change_24h > topGainer.change_24h) topGainer = tick;
+            if (!topDrop || tick.change_24h < topDrop.change_24h) topDrop = tick;
+        });
+
+        if (topGainer) {
+            document.getElementById('card-top-gainer').innerText = `${topGainer.symbol} +${topGainer.change_24h.toFixed(2)}%`;
+        }
+        if (topDrop) {
+            document.getElementById('card-top-drop').innerText = `${topDrop.symbol} ${topDrop.change_24h.toFixed(2)}%`;
+        }
+        document.getElementById('card-total-symbols').innerText = symbolState.size;
+    }
+
+    function setFilter(filter) {
+        activeFilter = filter;
+        ['ALL', 'FOREX', 'CRYPTO', 'METALS'].forEach(f => {
+            const btn = document.getElementById(`filter-${f}`);
+            if (f === filter) {
+                btn.className = "px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-600 text-white shadow";
+            } else {
+                btn.className = "px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700";
+            }
+        });
+
+        symbolState.forEach((tick, sym) => {
+            const tr = document.getElementById(`row-${sym}`);
+            if (tr) applyRowFilters(tr, sym);
+        });
+    }
+
+    document.getElementById('search-input').addEventListener('input', (e) => {
+        searchQuery = e.target.value.trim();
+        symbolState.forEach((tick, sym) => {
+            const tr = document.getElementById(`row-${sym}`);
+            if (tr) applyRowFilters(tr, sym);
+        });
+    });
+    </script>
+</body>
+</html>
